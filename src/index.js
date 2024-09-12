@@ -13,6 +13,8 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const env = dotenv.config().parsed // 环境参数
 const { version, name } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'))
+// 新增群聊白名单
+const specialRoomWhiteList = env.SPECIAL_ROOM_WHITELIST ? env.SPECIAL_ROOM_WHITELIST.split(',') : []
 
 // 扫码
 function onScan(qrcode, status) {
@@ -62,6 +64,29 @@ async function onMessage(msg) {
   // await shardingMessage(msg,bot)
 }
 
+//新人入群
+async function onRoomJoin(roomJoin, inviteeList, inviter) {
+  const roomName = (await roomJoin?.topic()) || null // 群名称
+  const isRoom = specialRoomWhiteList.includes(roomName) // 是否在群聊白名单内并且艾特了机器人
+
+  if (isRoom) {
+    await roomJoin.say(
+      `欢迎进入三林约球群
+
+新人请参考置顶消息 修改群名片 昵称-羽毛球等级
+
+在这里 欢迎你：
+抢到场地后 发起约球
+搭上群内车 一起凑球
+
+约场信息看👉群置顶消息
+
+欢迎讨论和羽毛球🏸相关的任何事情～`,
+      ...inviteeList,
+    )
+  }
+}
+
 // 初始化机器人
 const CHROME_BIN = process.env.CHROME_BIN ? { endpoint: process.env.CHROME_BIN } : {}
 let serviceType = ''
@@ -85,6 +110,8 @@ bot.on('logout', onLogout)
 bot.on('message', onMessage)
 // 添加好友
 bot.on('friendship', onFriendShip)
+//新人入群
+bot.on('room-join', onRoomJoin)
 // 错误
 bot.on('error', (e) => {
   console.error('❌ bot error handle: ', e)
