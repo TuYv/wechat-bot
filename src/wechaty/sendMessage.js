@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
-import fs from 'fs/promises'
-import path from 'path'
+import { handleSolitaire, handleCommand } from './records.js'
+
 // 加载环境变量
 dotenv.config()
 const env = dotenv.config().parsed // 环境参数
@@ -19,46 +19,6 @@ const roomWhiteList = env.ROOM_WHITELIST ? env.ROOM_WHITELIST.split(',') : []
 // 新增群聊白名单
 const specialRoomWhiteList = env.SPECIAL_ROOM_WHITELIST ? env.SPECIAL_ROOM_WHITELIST.split(',') : []
 
-// 用于存储记录的对象
-let records = {}
-let lastId = 0 // 用于跟踪最后使用的ID
-const RECORDS_FILE = path.join(process.cwd(), 'records.json')
-
-// 在程序启动时加载记录和最后使用的ID
-async function loadRecordsAndLastId() {
-  try {
-    const data = await fs.readFile(RECORDS_FILE, 'utf8')
-    const parsed = JSON.parse(data)
-    records = parsed.records || {}
-    lastId = parsed.lastId || 0
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      console.error('读取记录文件时出错:', error)
-    }
-    records = {}
-    lastId = 0
-  }
-}
-
-// 生成新的ID
-function generateNewId() {
-  lastId++
-  return lastId
-}
-
-// 保存记录和最后使用的ID
-async function saveRecordsAndLastId() {
-  try {
-    const data = JSON.stringify({ records, lastId }, null, 2)
-    await fs.writeFile(RECORDS_FILE, data, 'utf8')
-  } catch (error) {
-    console.error('保存记录文件时出错:', error)
-  }
-}
-
-// 在程序启动时加载记录和最后使用的ID
-loadRecordsAndLastId()
-
 import { getServe } from './serve.js'
 /**
  * 处理特殊群聊消息
@@ -69,91 +29,35 @@ import { getServe } from './serve.js'
  */
 export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const getReply = getServe(ServiceType)
-  const contact = msg.talker() // 发消息人
+  const contact = await msg.talker() // 发消息人
   const content = msg.text() // 消息内容
   const room = msg.room() // 是否是群消息
   const roomName = (await room?.topic()) || null // 群名称
   const isRoom = specialRoomWhiteList.includes(roomName) && content.includes(`${botName}`) // 是否在群聊白名单内并且艾特了机器人
+  const isSolitaire = specialRoomWhiteList.includes(roomName) && (content.includes(`#接龙`) || content.includes(`#Group Note`))
   const alias = (await contact.alias()) || (await contact.name()) // 发消息人昵称
-
+  const remarkName = await contact.alias() // 备注名称
+  const name = await contact.name() // 微信名称
+  const isText = msg.type() === bot.Message.Type.Text // 消息类型是否为文本
+  const isBotSelf = botName === remarkName || botName === name // 是否是机器人自己
   const question = (await msg.mentionText()) || content.replace(`${botName}`, '').trim()
   const [command, ...args] = question.split(' ')
 
-  switch (command.toLowerCase()) {
-    case '/add':
-    case '/a':
-      if (args.length > 0) {
-        const id = generateNewId()
-        records[id] = {
-          name: alias,
-          content: args.join(' '),
-          participants: [alias], // 自动将发起人加入参与者列表
-        }
-        await saveRecordsAndLastId() // 保存记录和最后使用的ID
-        await room.say(`记录已添加，编号：${id}`)
-      } else {
-        await room.say('请提供要记录的内容')
-      }
-      break
-    case '/query':
-    case '/q':
-      if (args.length > 0) {
-        const id = parseInt(args[0], 10)
-        if (records[id]) {
-          const record = records[id]
-          const participants = record.participants.join(', ')
-          await room.say(`编号:${id}, 内容:${record.content}, 参与者: ${participants}`)
-        } else {
-          await room.say(`未找到编号为 ${id} 的记录`)
-        }
-      } else {
-        const recordList = Object.entries(records)
-          .map(([id, record]) => `编号:${id},${record.content},发起人 ${record.name}.`)
-          .join('\n')
-        await room.say(recordList || '暂无记录')
-      }
-      break
-    case '/delete':
-    case '/d':
-      if (args.length > 0) {
-        const id = parseInt(args[0], 10)
-        if (records[id]) {
-          delete records[id]
-          await saveRecordsAndLastId() // 保存记录和最后使用的ID
-          await room.say(`编号 ${id} 的记录已删除`)
-        } else {
-          await room.say(`未找到编号为 ${id} 的记录`)
-        }
-      } else {
-        await room.say('请提供要删除的记录编号')
-      }
-      break
-    case '/join':
-    case '/j':
-      if (args.length > 0) {
-        const id = parseInt(args[0], 10)
-        if (records[id]) {
-          if (!records[id].participants) {
-            records[id].participants = [] // 初始化 participants
-          }
-          if (!records[id].participants.includes(alias)) {
-            records[id].participants.push(alias)
-            await saveRecordsAndLastId()
-            await room.say(`${alias} 已加入编号 ${id} 的记录`)
-          } else {
-            await room.say(`${alias} 已经在编号 ${id} 的记录中`)
-          }
-        } else {
-          await room.say(`未找到编号为 ${id} 的记录`)
-        }
-      } else {
-        await room.say('请提供要加入的记录编号')
-      }
-      break
-    default:
-      // 调用原来的 defaultMessage 方法
-      await aiMessage(msg, bot, ServiceType)
+  if (isBotSelf || !isText) return // 如果是机器人自己发送的消息或者消息类型不是文本则不处理
+  console.log(name + ': ' + msg.text())
+  if (isSolitaire) {
+    //接龙操作
+    handleSolitaire(content, roomName)
+    return
   }
+  if (command && isRoom) {
+    // 命令操作
+    const commandResponse = await handleCommand(command, args, alias, roomName)
+    await room.say(commandResponse)
+    return
+  }
+  //AI操作
+  await aiMessage(msg, bot, ServiceType)
 }
 
 /**
@@ -173,12 +77,8 @@ export async function aiMessage(msg, bot, ServiceType = 'GPT') {
   const alias = (await contact.alias()) || (await contact.name()) // 发消息人昵称
   const remarkName = await contact.alias() // 备注名称
   const name = await contact.name() // 微信名称
-  const isText = msg.type() === bot.Message.Type.Text // 消息类型是否为文本
   const isRoom = roomWhiteList.includes(roomName) && content.includes(`${botName}`) // 是否在群聊白名单内并且艾特了机器人
   const isAlias = aliasWhiteList.includes(remarkName) || aliasWhiteList.includes(name) // 发消息的人是否在联系人白名单内
-  const isBotSelf = botName === remarkName || botName === name // 是否是机器人自己
-  // TODO 你们可以根据自己的需求修改这里的逻辑
-  if (isBotSelf || !isText) return // 如果是机器人自己发送的消息或者消息类型不是文本则不处理
   try {
     // 区分群聊和私聊
     // 群聊消息去掉艾特主体后，匹配自动回复前缀
@@ -267,25 +167,4 @@ async function splitMessage(text) {
     realText = item[item.length - 1]
   }
   return realText
-}
-// 读取记录
-async function loadRecords() {
-  try {
-    const data = await fs.readFile(RECORDS_FILE, 'utf8')
-    records = JSON.parse(data)
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      console.error('读取记录文件时出错:', error)
-    }
-    // 如果文件不存在，我们就使用空对象
-    records = {}
-  }
-}
-// 保存记录
-async function saveRecords() {
-  try {
-    await fs.writeFile(RECORDS_FILE, JSON.stringify(records, null, 2), 'utf8')
-  } catch (error) {
-    console.error('保存记录文件时出错:', error)
-  }
 }

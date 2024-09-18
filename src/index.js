@@ -8,6 +8,8 @@ import fs from 'fs'
 import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { defaultMessage } from './wechaty/sendMessage.js'
+import { FileBox } from 'file-box'
+import { sendScheduledMessage } from './wechaty/scheduledMessage.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -29,11 +31,21 @@ function onScan(qrcode, status) {
 }
 
 // 登录
-function onLogin(user) {
+async function onLogin(user) {
   console.log(`${user} has logged in`)
   const date = new Date()
   console.log(`Current time:${date}`)
   console.log(`Automatic robot chat mode has been activated`)
+  const room = await bot.Room.find({ topic: '三林羽毛球🏸' })
+  // const roomList = await bot.Room.findAll()
+  // console.log(roomList)
+  if (room) {
+    const roomName = (await room?.topic()) || null // 群名称
+    console.log('获取到群聊' + roomName)
+    sendScheduledMessage(room)
+  } else {
+    console.log('未找到指定群聊')
+  }
 }
 
 // 登出
@@ -84,6 +96,8 @@ async function onRoomJoin(roomJoin, inviteeList, inviter) {
 欢迎讨论和羽毛球🏸相关的任何事情～`,
       ...inviteeList,
     )
+    const file = FileBox.fromFile('src/imgs/WechatIMG2846.jpg')
+    await roomJoin.say(file)
   }
 }
 
