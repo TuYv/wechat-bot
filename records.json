@@ -14,30 +14,27 @@
       }
     },
     "测试": {
-      "lastId": 22,
+      "lastId": 3,
       "data": {
-        "1": {
-          "name": "可乐可不乐",
-          "content": "测试3",
+        "2": {
+          "name": "rick",
+          "content": "测试一下新的接龙",
           "participants": [
-            "可乐可不乐"
-          ]
+            "rick",
+            "可乐可不乐",
+            "李四",
+            "张三"
+          ],
+          "deleted": false
         },
         "3": {
-          "name": "张三",
-          "content": "#接龙",
+          "name": "rick",
+          "content": "测试一下新的接龙\n2.瑞克",
           "participants": [
-            "张三",
-            "李四",
-            "可乐可不乐"
-          ]
-        },
-        "22": {
-          "name": "可乐可不乐",
-          "content": "测试测试",
-          "participants": [
-            "可乐可不乐"
-          ]
+            "rick",
+            null
+          ],
+          "deleted": false
         }
       }
     },

@@ -36,16 +36,7 @@ async function onLogin(user) {
   const date = new Date()
   console.log(`Current time:${date}`)
   console.log(`Automatic robot chat mode has been activated`)
-  const room = await bot.Room.find({ topic: '三林羽毛球🏸' })
-  // const roomList = await bot.Room.findAll()
-  // console.log(roomList)
-  if (room) {
-    const roomName = (await room?.topic()) || null // 群名称
-    console.log('获取到群聊' + roomName)
-    sendScheduledMessage(room)
-  } else {
-    console.log('未找到指定群聊')
-  }
+  sendScheduledMessage()
 }
 
 // 登出

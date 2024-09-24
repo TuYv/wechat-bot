@@ -1,8 +1,12 @@
 import { FileBox } from 'file-box'
+import { bot } from '../index.js'
 
-export async function sendScheduledMessage(room) {
+export async function sendScheduledMessage() {
   const message = `抢场地啦～～`
   const miniappLink = `#小程序://趣运动/DP42lh93kpErt4n`
+
+  // const roomList = await bot.Room.findAll()
+  // console.log(roomList)
 
   const now = new Date()
   const firstSendTime = new Date()
@@ -17,13 +21,28 @@ export async function sendScheduledMessage(room) {
 
   // 首次发送
   setTimeout(async () => {
-    await room.say(message)
-    await room.say(miniappLink)
+    const room = await bot.Room.find({ topic: '三林羽毛球🏸' })
+    if (room) {
+      const roomName = (await room?.topic()) || null // 群名称
+      console.log('获取到群聊' + roomName)
+
+      await room.say(message)
+      await room.say(miniappLink)
+    } else {
+      console.log('未找到指定群聊')
+    }
     // 每隔 24 小时发送一次
     setInterval(
       async () => {
-        await room.say(message)
-        await room.say(miniappLink)
+        const room = await bot.Room.find({ topic: '三林羽毛球🏸' })
+        if (room) {
+          const roomName = (await room?.topic()) || null // 群名称
+          console.log('获取到群聊' + roomName)
+          await room.say(message)
+          await room.say(miniappLink)
+        } else {
+          console.log('未找到指定群聊')
+        }
       },
       24 * 60 * 60 * 1000,
     ) // 24小时
