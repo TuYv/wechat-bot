@@ -80,11 +80,15 @@ async function onRoomJoin(roomJoin, inviteeList, inviter) {
 
 在这里 欢迎你：
 抢到场地后 发起约球
-搭上群内车 一起凑球
+搭上群内车 一起凑场
 
-约场信息看👉群置顶消息
+约场信息可@瑞克查询
+ps: 瑞克是人机群助手
+只需要@他，问出你想问即可
+@瑞克，这周有什么活动？
+@瑞克，明天天气怎么样？
 
-欢迎讨论和羽毛球🏸相关的任何事情～`,
+欢迎聊球，约球，调戏@瑞克～`,
       ...inviteeList,
     )
     const file = FileBox.fromFile('src/imgs/WechatIMG2846.jpg')

@@ -95,16 +95,27 @@ export async function handleSolitaire(content, roomName) {
     .replace(/#接龙/g, '')
     .replace(/#Group Note/g, '')
     .trim()
-  const participants = cleanedContent
-    .split('\n')
-    .filter((line) => /^\d+\.\s/.test(line) || /^\d+/.test(line)) // 只保留以数字和点开头的行
-    .map((line) => line.split('. ')[1] || line.split(' ')[1]) // 获取参与者名称
+  const lines = cleanedContent.split('\n')
+  const participants = []
+  let updatedContent = ''
 
-  const updatedContent = cleanedContent
-    .split('\n')
-    .filter((line) => !/^\d+\.\s/.test(line) && !/^\d+/.test(line)) // 过滤掉参与者行
-    .join('\n')
-    .trim()
+  // 第一行作为内容
+  updatedContent += lines[0].trim() + '\n'
+
+  // 从第二行开始判断参与者
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i]
+    if (/^\d+\.\s?/.test(line)) {
+      // 识别参与者行
+      participants.push(line.split('. ')[1] || line.split('.')[1] || line.split(' ')[1])
+    } else {
+      // 如果不是参与者行，继续添加到内容中
+      updatedContent += line.trim() + '\n'
+    }
+  }
+
+  // 如果有参与者，去掉最后的换行符
+  updatedContent = updatedContent.trim()
   const name = participants[0] // 参与人中的第一个
 
   // 检查是否需要更新记录
@@ -148,8 +159,8 @@ export async function handleCommand(command, args, alias, roomName) {
       } else {
         const recordList = Object.entries(records[roomName]?.data || {})
           .filter(([id, record]) => !record.deleted) // 过滤掉已删除的记录
-          .map(([id, record]) => `No:${id}, ${record.content}, 发起人 ${record.name}.`)
-          .join('\n-----------------\n')
+          .map(([id, record]) => `No:${id} ${record.content},\n已报名:${record.participants.length}人 发起人:${record.name}.`)
+          .join('\n------------------------\n')
         return recordList || '暂无记录'
       }
     case '/delete':
