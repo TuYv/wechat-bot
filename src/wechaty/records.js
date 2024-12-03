@@ -217,7 +217,78 @@ export async function handleCommand(command, args, alias, roomName) {
       } else {
         return '请提供要恢复的记录编号。'
       }
+    case '/point':
+    case '/p':
+      const points = getPoints(roomName)
+      if (points.length === 0) {
+        return '暂无积分记录'
+      }
+      if (args.length > 0) {
+        // 查询指定用户积分
+        const targetName = args.join(' ').trim()
+        const points = getPoints(roomName)
+        const userPoint = points.find((p) => p.name === targetName)
+
+        if (userPoint) {
+          return `${targetName} 当前积分：${userPoint.points}分\n排名：第${userPoint.rank}名`
+        } else {
+          return `未找到 ${targetName} 的积分记录`
+        }
+      }
+
+      const pointsList = points
+        .slice(0, 10)
+        .map(({ rank, name, points }) => {
+          let medal = ''
+          // 为前三名添加奖牌表情
+          if (rank === 1) medal = '🥇'
+          else if (rank === 2) medal = '🥈'
+          else if (rank === 3) medal = '🥉'
+
+          return `${medal}${rank}. ${name}: ${points}分`
+        })
+        .join('\n')
+
+      return `🏆 积分排行榜\n${'='.repeat(20)}\n${pointsList}\n${'='.repeat(20)}\n发起活动：5分 | 参与活动：1分`
     default:
       return '未知命令'
   }
+}
+
+/**
+ * 计算并获取积分
+ * @param {string} roomName 群组名称
+ * @returns {Array<{name: string, points: number}>} 积分排行数组
+ */
+export function getPoints(roomName) {
+  const pointsMap = new Map() // 用于存储每个人的积分
+
+  if (!records[roomName]?.data) {
+    return []
+  }
+
+  // 遍历所有未删除的记录
+  Object.values(records[roomName].data).forEach((record) => {
+    if (!record.participants || record.participants.length === 0) {
+      return
+    }
+
+    // 第一个参与者是发起者，得5分
+    const initiator = record.participants[0]
+    pointsMap.set(initiator, (pointsMap.get(initiator) || 0) + 5)
+
+    // 其他参与者各得1分
+    record.participants.slice(1).forEach((participant) => {
+      pointsMap.set(participant, (pointsMap.get(participant) || 0) + 1)
+    })
+  })
+
+  // 转换为数组并排序
+  return Array.from(pointsMap.entries())
+    .sort((a, b) => b[1] - a[1]) // 按积分降序排序
+    .map(([name, points], index) => ({
+      rank: index + 1,
+      name,
+      points,
+    }))
 }
