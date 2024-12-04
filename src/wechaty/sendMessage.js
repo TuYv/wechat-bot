@@ -38,7 +38,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const roomName = (await room?.topic()) || null // 群名称
   const isSpecialRoom = specialRoomWhiteList.includes(roomName) // 是否在群聊白名单内并且艾特了机器人
   const isMentionBot = content.startsWith(`${botName}`)
-  const isSolitaire = (content.startsWith(`#接龙`) || content.startsWith(`#Group Note`))
+  const isSolitaire = content.startsWith(`#接龙`) || content.startsWith(`#Group Note`)
   const alias = (await contact.alias()) || (await contact.name()) // 发消息人昵称
   const remarkName = await contact.alias() // 备注名称
   const name = await contact.name() // 微信名称
@@ -51,7 +51,6 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   if (isBotSelf || !isText) return // 如果是机器人自己发送的消息或者消息类型不是文本则不处理
 
   if (isSpecialRoom) {
-
     //接龙操作
     if (isSolitaire) {
       await handleSolitaire(content, roomName)
@@ -82,16 +81,28 @@ async function checkQuestion(question, roomName, ServiceType = 'GPT') {
   let response = await getReply(message)
   if (response != 'no') {
     //如果是天气相关的问题
-    const context = await getWeather(response)
-    const jsonContext = JSON.stringify(context)
-    message = prompts.WEATHER_TEMPLATE(dateInfo, jsonContext, question)
+    return await getWeatherReply(dateInfo, question)
   } else {
     //羽毛球管理相关的问题
     const activeRecords = getActiveRecords(roomName)
     const recordList = JSON.stringify(activeRecords)
 
-    message = prompts.GROUP_ASSISTANT(recordList, dateInfo, question)
+    return await getBadmintonReply(dateInfo, recordList, question)
   }
+}
+
+//获取天气提示
+async function getWeatherReply(dateInfo, question) {
+  const context = await getWeather()
+  const jsonContext = JSON.stringify(context)
+  const message = prompts.WEATHER_TEMPLATE(dateInfo, jsonContext, question)
+  response = await getReply(message)
+  return response
+}
+
+//获取羽毛球管理响应
+async function getBadmintonReply(dateInfo, recordList, question) {
+  const message = prompts.GROUP_ASSISTANT(recordList, dateInfo, question)
   response = await getReply(message)
   return response
 }

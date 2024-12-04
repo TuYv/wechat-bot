@@ -3,65 +3,47 @@ import { bot } from '../index.js'
 import { getServe } from './serve.js'
 import { getActiveRecords, removeRecord, saveRecords } from './records.js'
 import schedule from 'node-schedule'
-import { defaultMessage } from './sendMessage.js'
+import { getWeatherReply } from './sendMessage.js'
+import { prompts } from '../prompts/index.js'
+import { getChineseDateInfo } from '../utils/dateUtils.js'
 
 // 加载环境变量
 dotenv.config()
 const env = dotenv.config().parsed // 环境参数
 
-// /**
-//  * 设置每日天气提醒
-//  * @param {*} bot wechaty实例
-//  */
-// export function scheduleWeatherReminder(bot) {
-//   // 每天早上 8:45 发送天气信息
-//   schedule.scheduleJob('45 8 * * *', async () => {
-//       try {
-//           // 创建一个模拟的消息对象
-//           const mockMessage = {
-//               text: () => `${process.env.BOT_NAME} 今天天气怎么样`,
-//               room: () => null,
-//               talker: () => ({
-//                   name: () => process.env.BOT_NAME,
-//                   alias: () => process.env.BOT_NAME
-//               }),
-//               type: () => bot.Message.Type.Text,
-//               mentionText: () => '今天天气怎么样'
-//           };
+/**
+ * 设置每日天气提醒
+ * @param {*} bot wechaty实例
+ */
+export function scheduleWeatherReminder(bot) {
+  // 每天早上 8:45 发送天气信息
+  schedule.scheduleJob('45 8 * * *', async () => {
+    try {
+      const dateInfo = getChineseDateInfo()
+      const response = await getWeatherReply(dateInfo, '今天天气怎么样')
+      const roomName = '三林羽毛球🏸'
+      const room = await bot.Room.find({ topic: roomName })
+      if (room) {
+        await room.say(response)
+      } else {
+        console.log('未找到指定群聊')
+      }
+    } catch (error) {
+      console.error('❌ 发送每日天气提醒失败:', error)
+    }
+  })
 
-//           await defaultMessage(mockMessage, bot);
-//           console.log('✅ 每日天气提醒已发送');
-//       } catch (error) {
-//           console.error('❌ 发送每日天气提醒失败:', error);
-//       }
-//   });
-
-//   console.log('⏰ 每日天气提醒任务已设置 (每天 8:45)');
-// }
+  console.log('⏰ 每日天气提醒任务已设置 (每天 8:45)')
+}
 
 export async function sendScheduledMessage() {
-  const now = new Date()
-  const firstSendTime = new Date()
-  firstSendTime.setHours(23, 58, 0, 0) // 设置为 11:58
-
-  // 如果当前时间已经超过 11:58，设置为第二天的 11:58
-  if (now > firstSendTime) {
-    firstSendTime.setDate(firstSendTime.getDate() + 1)
-  }
-
-  const delay = firstSendTime - now // 计算第一次发送的延迟时间
-
-  // 首次发送
-  setTimeout(async () => {
-    await dailyWork('三林羽毛球🏸')
-    // 每隔 24 小时发送一次
-    setInterval(
-      async () => {
-        await dailyWork('三林羽毛球🏸')
-      },
-      24 * 60 * 60 * 1000,
-    ) // 24小时
-  }, delay)
+  schedule.scheduleJob('58 23 * * *', async () => {
+    try {
+      await dailyWork('三林羽毛球🏸')
+    } catch (error) {
+      console.error('每日提醒抢场地报错: ', error)
+    }
+  })
 }
 
 async function dailyWork(roomName) {
@@ -92,32 +74,9 @@ export async function cleanExpiredRecords(roomName, ServiceType = 'GPT') {
   // 读取所有有效记录
   const activeRecords = getActiveRecords(roomName)
 
-  const today = new Date()
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-  const dateInfo = {
-    date: today.toLocaleDateString('zh-CN'),
-    weekday: weekdays[today.getDay()],
-  }
+  const dateInfo = getChineseDateInfo()
   // 构建 AI 提示
-  const prompt = `
-  今天是 ${dateInfo.date} ${dateInfo.weekday},请分析以下活动记录列表，判断哪些活动已经过期。
-  规则：
-  1. content字段中的今天 明天等相对时间不视为时间信息
-  2. 如果记录中content字段包含具体日期（如：9月25日、9.25、09-25、1022等），将其与当前日期比较
-  3. 如果记录中content字段包含星期几（如：周三、周四、星期三等），将其与当前星期比较,其中一周的开始是星期一
-  4. 如果上面比较的结果大于或等于当前时间或星期则视为未过期
-  5. 如果记录中content字段没有任何时间信息，也视为已过期
-  6. 需要尽可能少的删除数据，除非明确符合某条删除规则
-  7. 返回结果严格按照如下数据结构展示，括号内内容为字段释义，不需要返回，返回内容为纯文本不需要markdown转换：
-  [{
-    "id" : xxx(活动ID),
-    "result" : xx(true为已过期，false为未过期),
-    "reason" : xx(返回活动ID，活动内容和结果的判断逻辑需要给出判断过程和不符合哪条规则)
-}]
-  
-  以下是需要检查的活动记录：
-  ${JSON.stringify(activeRecords, null, 2)}
-  `
+  const prompt = prompts.CLEAR_DATA(dateInfo, activeRecords)
 
   try {
     let message = '活动自动过期结果汇报\n(如果有误删帮忙用/r 命令恢复一下 谢谢🙏):\n'
