@@ -36,7 +36,7 @@ async function onLogin(user) {
   const date = new Date()
   console.log(`Current time:${date}`)
   console.log(`Automatic robot chat mode has been activated`)
-  sendScheduledMessage()
+  sendScheduledMessage(serviceType)
 }
 
 // 登出

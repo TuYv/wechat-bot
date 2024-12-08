@@ -81,30 +81,40 @@ async function checkQuestion(question, roomName, ServiceType = 'GPT') {
   let response = await getReply(message)
   if (response != 'no') {
     //如果是天气相关的问题
-    return await getWeatherReply(dateInfo, question)
+    return await getWeatherReply(dateInfo, question, ServiceType)
+    // return await getOutfitReply(ServiceType)
   } else {
     //羽毛球管理相关的问题
     const activeRecords = getActiveRecords(roomName)
     const recordList = JSON.stringify(activeRecords)
 
-    return await getBadmintonReply(dateInfo, recordList, question)
+    return await getBadmintonReply(dateInfo, recordList, question, ServiceType)
   }
 }
 
 //获取天气提示
-async function getWeatherReply(dateInfo, question) {
+export async function getWeatherReply(dateInfo, question, ServiceType = 'GPT') {
+  const getReply = getServe(ServiceType)
   const context = await getWeather()
   const jsonContext = JSON.stringify(context)
   const message = prompts.WEATHER_TEMPLATE(dateInfo, jsonContext, question)
-  response = await getReply(message)
-  return response
+  return await getReply(message)
+}
+
+export async function getOutfitReply(ServiceType = 'GPT') {
+  const getReply = getServe(ServiceType)
+  const context = await getWeather()
+  const jsonContext = JSON.stringify(context)
+  console.log(jsonContext)
+  const message = prompts.OUTFIT(jsonContext)
+  return await getReply(message)
 }
 
 //获取羽毛球管理响应
-async function getBadmintonReply(dateInfo, recordList, question) {
+async function getBadmintonReply(dateInfo, recordList, question, ServiceType = 'GPT') {
+  const getReply = getServe(ServiceType)
   const message = prompts.GROUP_ASSISTANT(recordList, dateInfo, question)
-  response = await getReply(message)
-  return response
+  return await getReply(message)
 }
 
 /**
@@ -131,9 +141,8 @@ export async function aiMessage(msg, bot, ServiceType = 'GPT') {
     // 群聊消息去掉艾特主体后,匹配自动回复前缀
     if (isRoom && room && content.replace(`${botName}`, '').trimStart().startsWith(`${autoReplyPrefix}`)) {
       const question = (await msg.mentionText()) || content.replace(`${botName}`, '').replace(`${autoReplyPrefix}`, '') // 去掉艾特的消息主体
-      const prompt = prompts.THINKING_PROTOCOL + question
       console.log('🌸🌸🌸 / question: ', question)
-      const response = await getReply(prompt)
+      const response = await getReply(question)
       await room.say(response)
     }
     // 私人聊天,白名单内的直接发送

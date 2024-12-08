@@ -3,7 +3,7 @@ import { bot } from '../index.js'
 import { getServe } from './serve.js'
 import { getActiveRecords, removeRecord, saveRecords } from './records.js'
 import schedule from 'node-schedule'
-import { getWeatherReply } from './sendMessage.js'
+import { getOutfitReply } from './sendMessage.js'
 import { prompts } from '../prompts/index.js'
 import { getChineseDateInfo } from '../utils/dateUtils.js'
 
@@ -13,14 +13,12 @@ const env = dotenv.config().parsed // 环境参数
 
 /**
  * 设置每日天气提醒
- * @param {*} bot wechaty实例
  */
-export function scheduleWeatherReminder(bot) {
+export function scheduleWeatherReminder(ServiceType = 'GPT') {
   // 每天早上 8:45 发送天气信息
   schedule.scheduleJob('45 8 * * *', async () => {
     try {
-      const dateInfo = getChineseDateInfo()
-      const response = await getWeatherReply(dateInfo, '今天天气怎么样')
+      const response = await getOutfitReply(ServiceType)
       const roomName = '三林羽毛球🏸'
       const room = await bot.Room.find({ topic: roomName })
       if (room) {
@@ -36,7 +34,8 @@ export function scheduleWeatherReminder(bot) {
   console.log('⏰ 每日天气提醒任务已设置 (每天 8:45)')
 }
 
-export async function sendScheduledMessage() {
+export async function sendScheduledMessage(ServiceType = 'GPT') {
+  scheduleWeatherReminder(ServiceType)
   schedule.scheduleJob('58 23 * * *', async () => {
     try {
       await dailyWork('三林羽毛球🏸')
@@ -73,6 +72,14 @@ export async function cleanExpiredRecords(roomName, ServiceType = 'GPT') {
   const getReply = getServe(ServiceType)
   // 读取所有有效记录
   const activeRecords = getActiveRecords(roomName)
+  // 如果没有有效记录，直接返回
+  if (!activeRecords || activeRecords.length === 0) {
+    return {
+      success: true,
+      clearCount: 0,
+      message: '当前没有需要清理的记录',
+    }
+  }
 
   const dateInfo = getChineseDateInfo()
   // 构建 AI 提示
