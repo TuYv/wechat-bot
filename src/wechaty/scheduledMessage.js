@@ -16,7 +16,7 @@ const env = dotenv.config().parsed // 环境参数
  */
 export function scheduleWeatherReminder(ServiceType = 'GPT') {
   // 每天早上 8:45 发送天气信息
-  schedule.scheduleJob('45 8 * * *', async () => {
+  schedule.scheduleJob('0 7 * * *', async () => {
     try {
       const response = await getOutfitReply(ServiceType)
       const roomName = '三林羽毛球🏸'
@@ -31,7 +31,7 @@ export function scheduleWeatherReminder(ServiceType = 'GPT') {
     }
   })
 
-  console.log('⏰ 每日天气提醒任务已设置 (每天 8:45)')
+  console.log('⏰ 每日天气提醒任务已设置 (每天 07:00)')
 }
 
 export async function sendScheduledMessage(ServiceType = 'GPT') {
