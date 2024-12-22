@@ -125,7 +125,11 @@ Before presenting the final response, You should quickly ensure the response:- a
     -------------------------    以下是我的问题
     ${question}
     ------------------------- 以下为回复模板
-   如果你觉得这是在问今天的天气回答base,如果是在问未来的天气回答all,否则回答no。除此之外回复不需要任何内容
+   如果你觉得这是在问今天的天气回答base,
+   如果是在问未来的天气回答all,
+   如果是在问个人的年度总结回答A2,
+   如果是在问整体的年度总结回答A1,
+   否则回答no。除此之外回复不需要任何内容
     `,
 
   CLEAR_DATA: (dateInfo, activeRecords) => `

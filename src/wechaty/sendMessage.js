@@ -1,9 +1,10 @@
 import dotenv from 'dotenv'
-import { handleSolitaire, handleCommand, getActiveRecords } from './records.js'
+import { handleSolitaire, handleCommand, getActiveRecords, generateReport } from './records.js'
 import { getWeather } from '../api/weatherApi.js'
 import { getServe } from './serve.js'
 import { prompts } from '../prompts/index.js'
 import { getChineseDateInfo } from '../utils/dateUtils.js'
+import e from 'express'
 
 // 加载环境变量
 dotenv.config()
@@ -64,7 +65,8 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
     }
     //群管理助手操作
     if (isMentionBot) {
-      const response = await checkQuestion(question, roomName, ServiceType)
+      const roomAlias = await room.alias(contact) // 群昵称
+      const response = await checkQuestion(roomAlias, question, roomName, ServiceType)
       await room.say('@' + alias + ' ' + response)
       return
     }
@@ -73,22 +75,28 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   await aiMessage(msg, bot, ServiceType)
 }
 
-async function checkQuestion(question, roomName, ServiceType = 'GPT') {
+async function checkQuestion(roomAlias, question, roomName, ServiceType = 'GPT') {
   const getReply = getServe(ServiceType)
   //通过AI判断是什么类型的问题
   const dateInfo = getChineseDateInfo()
   let message = prompts.LOGICAL_JUDGMENT(question)
+  console.log(message)
   let response = await getReply(message)
-  if (response != 'no') {
-    //如果是天气相关的问题
-    return await getWeatherReply(dateInfo, question, ServiceType)
-    // return await getOutfitReply(ServiceType)
-  } else {
+  console.log(response)
+  if (response == 'A1') {
+    return await generateReport(roomName)
+  } else if (response == 'A2') {
+    return await generateReport(roomName, roomAlias)
+  } else if (response == 'no') {
     //羽毛球管理相关的问题
     const activeRecords = getActiveRecords(roomName)
     const recordList = JSON.stringify(activeRecords)
 
     return await getBadmintonReply(dateInfo, recordList, question, ServiceType)
+  } else {
+    //如果是天气相关的问题
+    return await getWeatherReply(dateInfo, question, ServiceType)
+    // return await getOutfitReply(ServiceType)
   }
 }
 

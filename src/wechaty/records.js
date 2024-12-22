@@ -1,5 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
+import { generateAnnualReport } from '../utils/reportUtils.js'
 
 const RECORDS_FILE = path.join(process.cwd(), 'records.json')
 let records = {}
@@ -8,6 +9,21 @@ let lastId = 0
 // 在适当的位置加载记录
 await loadRecords()
 
+// 生成年度总结报告
+export async function generateReport(roomName, playerName = '') {
+  try {
+    const report = generateAnnualReport({ records })
+
+    if (playerName != '') {
+      return report.generatePersonalReport(roomName, playerName)
+    } else {
+      return report.generateOverallReport(roomName)
+    }
+  } catch (error) {
+    console.error('生成年度总结报告时出错:', error)
+    return '生成报告时出现错误，请稍后再试'
+  }
+}
 // 加载记录
 export async function loadRecords() {
   try {
